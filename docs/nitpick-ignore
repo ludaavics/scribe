@@ -1,0 +1,7 @@
+# https://stackoverflow.com/a/30624034/1262843
+
+# External docs not properly handled in intersphinx
+# https://github.com/agronholm/sphinx-autodoc-typehints/issues/47
+py:class pandas.core.frame.DataFrame
+py:class pandas._libs.tslibs.timestamps.Timestamp
+py:class sqlalchemy.orm.session.Session
