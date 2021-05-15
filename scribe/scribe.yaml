@@ -1,0 +1,11 @@
+resis: redis://localhost:6379 # URL to the redis server
+memory: 86400 # discard market data that is older than this many seconds
+coins: # the set of pairs to retrieve from all platforms
+  - btcusd
+  - ethusd
+platforms:
+  - name: binance
+    coins: # additional pairs to retrive only on this platform
+      - bnbusd
+    options:
+      - interval: 1m # platform-specific options
