@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Iterable, Optional
+from typing import Optional, Sequence, Union
 
 from binance import AsyncClient, BinanceSocketManager
 from pydantic import validate_arguments
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 @validate_arguments
 async def listen(
-    coins: Iterable[str],
+    coins: Union[str, Sequence[str]],
     *,
     interval: BinanceKlineInterval = BinanceKlineInterval._1m,
     lifetime: Optional[int] = None,
@@ -23,23 +23,25 @@ async def listen(
     Args:
         coins: list of crypto pairs to monitor.
         interval: the width of the klines / candlesticks.
-        liftime: maximum lifetime, in seconds, of the socket.
+        lifetime: maximum lifetime, in seconds, of the socket.
     """
+    if isinstance(coins, str):
+        coins = [coins]
     client = await AsyncClient.create()
     socket_manager = BinanceSocketManager(client)
-    multiplex_socket = socket_manager.multiplex_socket(
+    socket = socket_manager.multiplex_socket(
         [f"{coin.lower()}@kline_{interval}" for coin in coins]
     )
     msg = (
-        f"Opening a {(str(lifetime) + 's') if lifetime else ''}"
-        f"websocket to binance, for candleticks on "
-        ", ".join(coins)
+        f"Opening a {(str(lifetime) + 's') if lifetime else ''} websocket "
+        f"to binance, for candleticks on {', '.join(coins)}."
     )
     logger.info(msg)
-    async with multiplex_socket as socket:
+    async with socket:
         end_time = (time.time() + lifetime) if lifetime else float("inf")
         while time.time() < end_time:
+
             res = await socket.recv()
-            print(res)
+            logger.debug(res)
 
     await client.close_connection()
