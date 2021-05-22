@@ -8,11 +8,16 @@ import scribe
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.parametrize("coins", ["bnbbtc", ["bnbbtc"], ["btcusdt", "bnbusd"]])
+@pytest.mark.parametrize(
+    "coins, bar_intervals",
+    [("bnbbtc", "1m"), (["bnbbtc"], ["1m"]), (["btcusdt", "bnbusd"], ["1m", "3m"])],
+)
 @pytest.mark.asyncio
-async def test_listen(caplog, coins, redis_url):
+async def test_listen(caplog, coins, bar_intervals, redis_url):
     with caplog.at_level(logging.DEBUG, logger="scribe.platforms.binance"):
-        await scribe.platforms.binance.bars(coins, broker_url=redis_url, lifetime=5)
+        await scribe.platforms.binance.bars(
+            coins, broker_url=redis_url, bar_intervals=bar_intervals, lifetime=5
+        )
 
         # make sure we logged at least one bar
         seen = False

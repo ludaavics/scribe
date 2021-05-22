@@ -33,7 +33,8 @@ The current default configuration is as follows:
   :linenos:
   :language: YAML
 
-Once you are satisfied with all the changes, you can start the worker:
+Once you are done with any changes to the default configuration, you can start
+the worker:
 
 .. code-block:: console
 

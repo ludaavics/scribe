@@ -18,24 +18,32 @@ async def bars(
     coins: Union[str, Sequence[str]],
     *,
     broker_url: str,
-    interval: BinanceKlineInterval = BinanceKlineInterval._1m,
+    bar_intervals: Union[
+        BinanceKlineInterval, Sequence[BinanceKlineInterval]
+    ] = BinanceKlineInterval._1m,
     lifetime: Optional[int] = None,
 ):
     """
-    Opens a websocket to binance and listens for spot, futures and basis price bars.
+    Opens a websocket to binance and listens for spot price bars.
 
     Args:
         coins: list of crypto pairs to monitor.
-        interval: the width of the klines / candlesticks.
+        bar_intervals: the widths of the klines / candlesticks.
         lifetime: maximum lifetime, in seconds, of the socket.
     """
     if isinstance(coins, str):
         coins = [coins]
+    if isinstance(bar_intervals, BinanceKlineInterval):
+        bar_intervals = [bar_intervals]
     redis_client = aioredis.from_url(broker_url)
-    client = await AsyncClient.create()
-    socket_manager = BinanceSocketManager(client)
+    binance_client = await AsyncClient.create()
+    socket_manager = BinanceSocketManager(binance_client)
     socket = socket_manager.multiplex_socket(
-        [f"{coin.lower()}@kline_{interval}" for coin in coins]
+        [
+            f"{coin.lower()}@kline_{interval}"
+            for coin in coins
+            for interval in bar_intervals
+        ]
     )
     msg = (
         f"Opening a {(str(lifetime) + 's') if lifetime else ''} websocket "
@@ -70,4 +78,4 @@ async def bars(
             channel = f"binance/{kline['s'].lower()}/spot/{kline['i']}"
             await redis_client.publish(channel, json.dumps(bar))
 
-    await client.close_connection()
+    await binance_client.close_connection()
