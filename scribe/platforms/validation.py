@@ -17,3 +17,8 @@ class BinanceKlineInterval(str, Enum):
     _3d = "3d"
     _1w = "1w"
     _1M = "1M"  # one month
+
+
+class BinanceFuturesType(str, Enum):
+    usd_m = "usd_m"
+    coin_m = "coin_m"

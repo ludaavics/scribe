@@ -20,7 +20,7 @@ def redis_url():
 async def scribe_binance(redis_url):
     coins = ["btcusdt", "btcbnb"]
     task = asyncio.create_task(
-        scribe.platforms.binance.bars(coins, broker_url=redis_url)
+        scribe.platforms.binance.stream_bars(coins, broker_url=redis_url)
     )
     yield
     task.cancel()

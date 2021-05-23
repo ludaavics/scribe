@@ -9,14 +9,25 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.mark.parametrize(
-    "coins, bar_intervals",
-    [("bnbbtc", "1m"), (["bnbbtc"], ["1m"]), (["btcusdt", "bnbusd"], ["1m", "3m"])],
+    "coins, spot, usd_m, coin_m, intervals",
+    [
+        ("bnbbtc", True, False, False, "1m"),
+        (["ethusdt"], True, False, False, ["3m"]),
+        ("btcusdt", False, False, True, ["1m"]),
+        (["btcusdt", "bnbusd"], True, True, True, ["1m", "3m"]),
+    ],
 )
 @pytest.mark.asyncio
-async def test_listen(caplog, coins, bar_intervals, redis_url):
+async def test_stream_bars(caplog, coins, spot, usd_m, coin_m, intervals, redis_url):
     with caplog.at_level(logging.DEBUG, logger="scribe.platforms.binance"):
-        await scribe.platforms.binance.bars(
-            coins, broker_url=redis_url, bar_intervals=bar_intervals, lifetime=5
+        await scribe.platforms.binance.stream_bars(
+            coins,
+            broker_url=redis_url,
+            spot=spot,
+            usd_m=usd_m,
+            coin_m=coin_m,
+            intervals=intervals,
+            lifetime=5,
         )
 
         # make sure we logged at least one bar
