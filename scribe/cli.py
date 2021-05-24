@@ -1,11 +1,17 @@
+import asyncio
 import os
 import shutil
 from pathlib import Path
 from typing import Optional
 
+import pydantic
 import typer
+import yaml
+
+import scribe
 
 from .__version__ import __version__
+from .validation import ScribeConfiguration
 
 app = typer.Typer()
 config = typer.Typer()
@@ -64,7 +70,7 @@ def generate():
     except FileExistsError:
         pass
     shutil.copy(source, destination)
-    typer.echo(f"Generate default configuration: {destination}")
+    typer.echo(f"Generated default configuration: {destination}")
 
 
 @config.command()
@@ -86,7 +92,30 @@ def _configuration_path():
 @app.command()
 def start():
     "Start publishing prices."
-    typer.echo("Start")
+    with open(_configuration_path()) as f:
+        try:
+            cfg = ScribeConfiguration(**yaml.load(f, Loader=yaml.FullLoader))
+        except pydantic.ValidationError as e:
+            typer.echo(e, err=True)
+            raise typer.Abort()
+    broker_url = cfg.broker_url
+    common_pairs = cfg.pairs
+
+    tasks = []
+    for platform in cfg.platforms:
+        pairs = common_pairs + (platform.pairs or [])
+        options = platform.options or {}
+        tasks.append(
+            getattr(scribe.platforms, platform.name).stream_bars(
+                pairs, broker_url=broker_url, **options
+            )
+        )
+
+    async def main():
+        await asyncio.gather(*tasks)
+
+    typer.echo(f"Streaming prices to {broker_url}...")
+    asyncio.run(main())
 
 
 app.add_typer(config, name="config")

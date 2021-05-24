@@ -1,4 +1,22 @@
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel
+
+
+class PlatformName(str, Enum):
+    binance = "binance"
+
+
+class ScribeConfiguration(BaseModel):
+    class Platform(BaseModel):
+        name: PlatformName
+        pairs: Optional[List[str]]
+        options: Optional[Dict[str, Any]]
+
+    broker_url: str
+    pairs: List[str]
+    platforms: List[Platform]
 
 
 class BinanceKlineInterval(str, Enum):

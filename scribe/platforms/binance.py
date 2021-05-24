@@ -9,7 +9,7 @@ import aioredis
 from binance import AsyncClient, BinanceSocketManager
 from pydantic import validate_arguments
 
-from .validation import BinanceFuturesType, BinanceKlineInterval
+from ..validation import BinanceFuturesType, BinanceKlineInterval
 
 logger = logging.getLogger(__name__)
 
