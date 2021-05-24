@@ -11,6 +11,9 @@ branches:
 cache:
   pip: true
 
+services:
+  - redis-server
+
 install:
   - make ci-install
 

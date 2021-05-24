@@ -54,13 +54,13 @@ docs-tests:
 docs-gh-pages:
 	@git checkout gh-pages
 	@rm -rf build templates static
-	@git checkout master $(GH_PAGES_SOURCES)
+	@git checkout main $(GH_PAGES_SOURCES)
 	@git reset HEAD
 	@$(MAKE) docs
 	@mv -fv $(BUILDDIR)/html/* ./
 	@rm -rf $(GH_PAGES_SOURCES) build
 	@git add -A
-	@git commit --no-verify -m "Generated gh-pages for `git log master -1 --pretty=short --abbrev-commit`" && git push $$(git rev-parse --abbrev-ref gh-pages@{upstream} | grep -oP '[^//]*' | head -1) gh-pages; git checkout master
+	@git commit --no-verify -m "Generated gh-pages for `git log main -1 --pretty=short --abbrev-commit`" && git push $$(git rev-parse --abbrev-ref gh-pages@{upstream} | grep -oP '[^//]*' | head -1) gh-pages; git checkout main
 
 
 # ------------------------------------------------------------------------------------ #

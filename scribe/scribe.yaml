@@ -1,0 +1,11 @@
+broker_url: redis://localhost:6379/prod # URL to the redis server
+pairs: # the set of pairs to retrieve from all platforms
+  - btcusdt
+  - ethusdt
+platforms:
+  - name: binance
+    pairs: # additional pairs to retrive only on this platform
+      - bnbusdt
+    options: # platform-specific options
+      intervals:
+        - 1m
