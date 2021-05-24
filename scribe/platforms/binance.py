@@ -15,16 +15,13 @@ logger = logging.getLogger(__name__)
 
 
 @validate_arguments
-async def stream_bars(
+async def publish_bars(
     pairs: Union[str, Sequence[str]],
     *,
     broker_url: str,
     intervals: Union[
         BinanceKlineInterval, Sequence[BinanceKlineInterval]
     ] = BinanceKlineInterval._1m,
-    spot: bool = True,
-    usd_m: bool = True,
-    coin_m: bool = False,
     lifetime: Optional[int] = None,
 ):
     """
@@ -34,49 +31,29 @@ async def stream_bars(
         pairs: list of crypto-currency pairs to monitor.
         broker_url: URL of the pub/sub broker.
         intervals: the widths of the klines / candlesticks.
-        spot: True to include spot prices.
-        usd_m: True to include usd margined futures.
-        coin_m: True to include coin margined futures.
         lifetime: maximum lifetime, in seconds, of the socket.
     """
-    if spot and not (usd_m or coin_m):
-        tasks = [
-            stream_spot_bars(
-                pairs,
-                broker_url=broker_url,
-                intervals=intervals,
-                lifetime=lifetime,
-            )
-        ]
-    else:
-        tasks = []
-        if usd_m:
-            tasks += [
-                stream_futures_bars(
-                    pairs,
-                    broker_url=broker_url,
-                    intervals=intervals,
-                    include_spot=spot,
-                    futures_type=BinanceFuturesType.usd_m,
-                    lifetime=lifetime,
-                )
-            ]
-        if coin_m:
-            tasks += [
-                stream_futures_bars(
-                    pairs,
-                    broker_url=broker_url,
-                    intervals=intervals,
-                    include_spot=(spot and not usd_m),
-                    futures_type=BinanceFuturesType.coin_m,
-                    lifetime=lifetime,
-                )
-            ]
-    await asyncio.gather(*[asyncio.create_task(task) for task in tasks])
+    tasks = [
+        publish_spot_bars(
+            pairs,
+            broker_url=broker_url,
+            intervals=intervals,
+            lifetime=lifetime,
+        ),
+        publish_futures_bars(
+            pairs,
+            broker_url=broker_url,
+            intervals=intervals,
+            futures_type=BinanceFuturesType.usd_m,
+            lifetime=lifetime,
+        ),
+    ]
+    task = asyncio.gather(*[asyncio.create_task(task) for task in tasks])
+    await task
 
 
 @validate_arguments
-async def stream_spot_bars(
+async def publish_spot_bars(
     pairs: Union[str, Sequence[str]],
     *,
     broker_url: str,
@@ -145,7 +122,7 @@ async def stream_spot_bars(
                     "is_closed": kline["x"],
                 },
             }
-            channel = f"binance/{pair}/{expiry}/{kline['i']}"
+            channel = f"binance/{pair}/{expiry}/{kline['i']}".lower()
             msg = f"{channel} <-- {json.dumps(event_to_publish)}"
             logger.debug(msg)
             await redis_client.publish(channel, json.dumps(event_to_publish))
@@ -154,7 +131,7 @@ async def stream_spot_bars(
 
 
 @validate_arguments
-async def stream_futures_bars(
+async def publish_futures_bars(
     pairs: Union[str, Sequence[str]],
     *,
     broker_url: str,
@@ -217,7 +194,7 @@ async def stream_futures_bars(
                 expiry = event["ct"].lower()
             else:
                 assert event_type == "kline"
-                pair = event["s"]
+                pair = event["s"].lower()
                 expiry = "spot"
 
             # publish to redis
@@ -246,9 +223,40 @@ async def stream_futures_bars(
                     "is_closed": kline["x"],
                 },
             }
-            channel = f"binance/{pair}/{expiry}/{kline['i']}"
+            channel = f"binance/{pair}/{expiry}/{kline['i']}".lower()
             msg = f"{channel} <-- {json.dumps(event_to_publish)}"
             logger.debug(msg)
             await redis_client.publish(channel, json.dumps(event_to_publish))
 
     await binance_client.close_connection()
+
+
+async def subscribe_bars(
+    pairs: Union[str, Sequence[str]],
+    *,
+    broker_url: str,
+    intervals: Union[
+        BinanceKlineInterval, Sequence[BinanceKlineInterval]
+    ] = BinanceKlineInterval._1m,
+    lifetime: Optional[int] = None,
+):
+    if isinstance(pairs, str):
+        pairs = [pairs]
+    if isinstance(intervals, BinanceKlineInterval):
+        intervals = [intervals]
+    expiries = ["spot", "perpetual", "current_quarter", "next_quarter"]
+    channels = [
+        f"binance/{pair}/{expiry}/{interval}"
+        for pair in pairs
+        for expiry in expiries
+        for interval in intervals
+    ]
+
+    redis_client = aioredis.from_url(broker_url)
+    pubsub = redis_client.pubsub()
+
+    await pubsub.psubscribe(*channels)
+    async for message in pubsub.listen():
+        # make sure we receive at least one message
+        if message["type"] == "pmessage":
+            yield message

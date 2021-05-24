@@ -106,7 +106,7 @@ def start():
         pairs = common_pairs + (platform.pairs or [])
         options = platform.options or {}
         tasks.append(
-            getattr(scribe.platforms, platform.name).stream_bars(
+            getattr(scribe.platforms, platform.name).publish_bars(
                 pairs, broker_url=broker_url, **options
             )
         )
